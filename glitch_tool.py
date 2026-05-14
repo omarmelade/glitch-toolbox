@@ -7,8 +7,6 @@ import random
 import re
 import sys
 
-mergeSourceByteList = []
-
 def writeFile(fileByteList, fileNum, iteration, bytesTochange, seed):
     filename, extension = path.splitext(args.infile)
     filename = filename.split("\\")[-1] if platform.system == "Windows" else filename.split("/")[-1]
@@ -17,7 +15,7 @@ def writeFile(fileByteList, fileNum, iteration, bytesTochange, seed):
         print("Writing file to " + outPath)
     open(outPath, "wb").write(bytes(fileByteList))
 
-def messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, fileNum):
+def messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, fileNum, mergeSourceByteList):
     newByteList = copy.copy(originalByteList)
     iteration = 1
     seed = args.seed or random.randrange(sys.maxsize)
@@ -26,6 +24,8 @@ def messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, fileN
         iteration = i+1
         if (args.mode == "repeat"):
             newByteList = repeatBytes(newByteList, bytesToChange, repeatWidth)
+        elif (args.mode == "merge"):
+            newByteList = mergeBytes(newByteList, bytesToChange, mergeSourceByteList)
         else:
             newByteList = transforms[args.mode](newByteList, bytesToChange)
         if (args.output_iterations > 0 and iteration%args.output_iterations == 0):
@@ -87,18 +87,17 @@ def moveBytes(byteList, bytesToChange):
     byteList[newPos:newPos] = chunk
     return byteList
 
-def mergeBytes(byteList, bytesToChange):
-    if (len(byteList) == 0 or len(mergeSourceByteList) == 0):
+def mergeBytes(byteList, bytesToChange, mergeSourceByteList):
+    if len(byteList) == 0 or len(mergeSourceByteList) == 0:
         return byteList
     chunkSize = min(bytesToChange, len(byteList), len(mergeSourceByteList))
     targetPos = random.randint(0, len(byteList) - chunkSize)
     sourcePos = random.randint(0, len(mergeSourceByteList) - chunkSize)
-    chunk = mergeSourceByteList[sourcePos:sourcePos+chunkSize]
-    byteList[targetPos:targetPos+chunkSize] = chunk
+    chunk = mergeSourceByteList[sourcePos:sourcePos + chunkSize]
+    byteList[targetPos:targetPos + chunkSize] = chunk
     return byteList
 
 def main():
-    global mergeSourceByteList
     # Do stuff to arguments
     if (not args.infile):
         print("Error: No input file specified")
@@ -109,9 +108,10 @@ def main():
     if (not args.mode):
         print("Error: No mode specified")
         return False
-    if (not (args.mode in transforms)):
+    if (not (args.mode in list(transforms.keys()) + ["merge"])):
         print("Error: Invalid mode")
         return False
+    mergeSourceByteList = []
     if (args.mode == "merge"):
         if (not args.infile2):
             print("Error: No second input file specified for merge mode")
@@ -119,7 +119,8 @@ def main():
         if (not path.isfile(args.infile2)):
             print("Error: Second input file not found")
             return False
-        mergeSourceByteList = list(open(args.infile2, "rb").read())
+        with open(args.infile2, "rb") as infile2:
+            mergeSourceByteList = list(infile2.read())
     minChanges = 1
     maxChanges = 1
     if (args.changes and re.match(r"[0-9]+-[0-9]+", args.changes)):
@@ -148,12 +149,13 @@ def main():
         minRepeating = int(args.repeat_width)
         maxRepeating = int(args.repeat_width)
     # Let the glitching commense!
-    originalByteList = list(open(args.infile, "rb").read())
+    with open(args.infile, "rb") as infile:
+        originalByteList = list(infile.read())
     for i in range(args.amount):
         iterations = random.randint(minChanges, maxChanges)
         bytesToChange = random.randint(minBytes, maxBytes)
         repeatWidth = random.randint(minRepeating, maxRepeating)
-        messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, i+1)
+        messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, i+1, mergeSourceByteList)
     if (not args.quiet):
         print("Finished writing files")
 
@@ -167,8 +169,7 @@ transforms = {
     "zero": zeroBytes,
     "insert": insertBytes,
     "replace": replaceBytes,
-    "move": moveBytes,
-    "merge": mergeBytes
+    "move": moveBytes
 }
 
 # Setup argparser
