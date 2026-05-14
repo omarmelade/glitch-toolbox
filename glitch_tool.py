@@ -24,8 +24,8 @@ def messWithFile(originalByteList, iterations, bytesToChange, repeatWidth, fileN
         iteration = i+1
         if (args.mode == "repeat"):
             newByteList = repeatBytes(newByteList, bytesToChange, repeatWidth)
-        elif (args.mode == "merge"):
-            newByteList = mergeBytes(newByteList, bytesToChange, mergeSourceByteList)
+        elif (args.mode in twoInputTransforms):
+            newByteList = twoInputTransforms[args.mode](newByteList, bytesToChange, mergeSourceByteList)
         else:
             newByteList = transforms[args.mode](newByteList, bytesToChange)
         if (args.output_iterations > 0 and iteration%args.output_iterations == 0):
@@ -97,6 +97,18 @@ def mergeBytes(byteList, bytesToChange, mergeSourceByteList):
     byteList[targetPos:targetPos + chunkSize] = chunk
     return byteList
 
+def blendBytes(byteList, bytesToChange, mergeSourceByteList):
+    if len(byteList) == 0 or len(mergeSourceByteList) == 0:
+        return byteList
+    chunkSize = min(bytesToChange, len(byteList), len(mergeSourceByteList))
+    targetPos = random.randint(0, len(byteList) - chunkSize)
+    sourcePos = random.randint(0, len(mergeSourceByteList) - chunkSize)
+    targetChunk = byteList[targetPos:targetPos + chunkSize]
+    sourceChunk = mergeSourceByteList[sourcePos:sourcePos + chunkSize]
+    blendedChunk = [(targetChunk[i] + sourceChunk[i]) // 2 for i in range(chunkSize)]
+    byteList[targetPos:targetPos + chunkSize] = blendedChunk
+    return byteList
+
 def main():
     # Do stuff to arguments
     if (not args.infile):
@@ -108,13 +120,14 @@ def main():
     if (not args.mode):
         print("Error: No mode specified")
         return False
-    if (not (args.mode in list(transforms.keys()) + ["merge"])):
+    validModes = list(transforms.keys()) + list(twoInputTransforms.keys())
+    if (not (args.mode in validModes)):
         print("Error: Invalid mode")
         return False
     mergeSourceByteList = []
-    if (args.mode == "merge"):
+    if (args.mode in twoInputTransforms):
         if (not args.infile2):
-            print("Error: No second input file specified for merge mode")
+            print("Error: No second input file specified for two-input mode")
             return False
         if (not path.isfile(args.infile2)):
             print("Error: Second input file not found")
@@ -171,13 +184,25 @@ transforms = {
     "replace": replaceBytes,
     "move": moveBytes
 }
+twoInputTransforms = {
+    "merge": mergeBytes,
+    "blend": blendBytes
+}
+allModeNames = list(transforms.keys()) + list(twoInputTransforms.keys())
 
 # Setup argparser
-parser = argparse.ArgumentParser(description="Do terrible things to data.")
+parser = argparse.ArgumentParser(
+    description="Do terrible things to data (great for image databending).",
+    formatter_class=argparse.RawTextHelpFormatter,
+    epilog="Examples:\n"
+           "  python glitch_tool.py -i image1.jpg -m change -c 5 -b 20 -o ./out/\n"
+           "  python glitch_tool.py -i image1.jpg --infile2 image2.jpg -m merge -c 10 -b 40 -o ./out/\n"
+           "  python glitch_tool.py -i image1.jpg --infile2 image2.jpg -m blend -c 10 -b 40 -o ./out/"
+)
 # Required arguments
-parser.add_argument("-i", "--infile", help="Input file")
-parser.add_argument("--infile2", help="Second input file (required for merge mode)")
-parser.add_argument("-m", "--mode", help="File change mode")
+parser.add_argument("-i", "--infile", help="Primary input file")
+parser.add_argument("--infile2", help="Second input file (required for merge/blend modes)")
+parser.add_argument("-m", "--mode", choices=allModeNames, help="Glitch mode")
 # Optional arguments
 parser.add_argument("-o", "--outdir", default="./", help="Output folder")
 parser.add_argument("-s", "--seed", type=int, help="Seed to use for random")
@@ -185,7 +210,7 @@ parser.add_argument("-a", "--amount", type=int, default=1, help="Amount of new f
 parser.add_argument("-c", "--changes", help="Amount of random changes. Can be in a range, like '1-10'.")
 parser.add_argument("-b", "--bytes", help="Amount of bytes to change each change. Can be in a range, like '1-10'.")
 parser.add_argument("-r", "--repeat-width", help="Amount of bytes to repeat. Can be in a range, like '1-10'.")
-parser.add_argument("-q", "--quiet", default=False, action="store_true", help="Surpress logging")
+parser.add_argument("-q", "--quiet", default=False, action="store_true", help="Suppress logging")
 parser.add_argument("--output-iterations", type=int, default=0, help="How many iterations between outputs")
 args = parser.parse_args()
 
