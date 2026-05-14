@@ -19,7 +19,7 @@ Optional arguments:
   -c, --changes        Amount of random changes. Can be in a range, like 1-10.
   -b, --bytes          Amount of bytes to change each change. Can be in a range, like 1-10.
   -r, --repeat-width   Amount of bytes to repeat. Can be in a range, like 1-10.
-  -q, --quiet          Surpress logging
+  -q, --quiet          Suppress logging
   --output-iterations  How many changes between outputs
   --infile2            Second input file (required for merge mode)
 ```

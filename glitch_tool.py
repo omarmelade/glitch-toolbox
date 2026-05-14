@@ -148,7 +148,7 @@ def main():
     elif (args.repeat_width):
         minRepeating = int(args.repeat_width)
         maxRepeating = int(args.repeat_width)
-    # Let the glitching commense!
+    # Let the glitching commence!
     with open(args.infile, "rb") as infile:
         originalByteList = list(infile.read())
     for i in range(args.amount):
