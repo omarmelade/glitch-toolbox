@@ -7,6 +7,7 @@ glitch-tool is a simple Python script for messing with files in a few different 
 usage: glitch_tool.py [-h] [-i INFILE] [-m MODE] [-o OUTDIR] [-s SEED]
                       [-a AMOUNT] [-c CHANGES] [-b BYTES] [-r REPEAT_WIDTH]
                       [-q] [--output-iterations OUTPUT_ITERATIONS]
+                      [--infile2 INFILE2]
 
 Required arguments:
   -i, --infile         Input file
@@ -20,6 +21,7 @@ Optional arguments:
   -r, --repeat-width   Amount of bytes to repeat. Can be in a range, like 1-10.
   -q, --quiet          Surpress logging
   --output-iterations  How many changes between outputs
+  --infile2            Second input file (required for merge mode)
 ```
 
 ### Modes
@@ -33,3 +35,4 @@ The valid modes are:
 * `insert` - Insert random chunk of data at a random point.
 * `replace` - Replace chunk with a chunk of random data.
 * `move` - Remove a chunk from one position to another.
+* `merge` - Copy a random chunk from a second input file (`--infile2`) into the input file.

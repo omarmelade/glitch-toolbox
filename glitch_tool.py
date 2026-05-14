@@ -7,6 +7,8 @@ import random
 import re
 import sys
 
+mergeSourceByteList = []
+
 def writeFile(fileByteList, fileNum, iteration, bytesTochange, seed):
     filename, extension = path.splitext(args.infile)
     filename = filename.split("\\")[-1] if platform.system == "Windows" else filename.split("/")[-1]
@@ -85,7 +87,18 @@ def moveBytes(byteList, bytesToChange):
     byteList[newPos:newPos] = chunk
     return byteList
 
+def mergeBytes(byteList, bytesToChange):
+    if (len(byteList) == 0 or len(mergeSourceByteList) == 0):
+        return byteList
+    chunkSize = min(bytesToChange, len(byteList), len(mergeSourceByteList))
+    targetPos = random.randint(0, len(byteList) - chunkSize)
+    sourcePos = random.randint(0, len(mergeSourceByteList) - chunkSize)
+    chunk = mergeSourceByteList[sourcePos:sourcePos+chunkSize]
+    byteList[targetPos:targetPos+chunkSize] = chunk
+    return byteList
+
 def main():
+    global mergeSourceByteList
     # Do stuff to arguments
     if (not args.infile):
         print("Error: No input file specified")
@@ -99,6 +112,14 @@ def main():
     if (not (args.mode in transforms)):
         print("Error: Invalid mode")
         return False
+    if (args.mode == "merge"):
+        if (not args.infile2):
+            print("Error: No second input file specified for merge mode")
+            return False
+        if (not path.isfile(args.infile2)):
+            print("Error: Second input file not found")
+            return False
+        mergeSourceByteList = list(open(args.infile2, "rb").read())
     minChanges = 1
     maxChanges = 1
     if (args.changes and re.match(r"[0-9]+-[0-9]+", args.changes)):
@@ -146,13 +167,15 @@ transforms = {
     "zero": zeroBytes,
     "insert": insertBytes,
     "replace": replaceBytes,
-    "move": moveBytes
+    "move": moveBytes,
+    "merge": mergeBytes
 }
 
 # Setup argparser
 parser = argparse.ArgumentParser(description="Do terrible things to data.")
 # Required arguments
 parser.add_argument("-i", "--infile", help="Input file")
+parser.add_argument("--infile2", help="Second input file (required for merge mode)")
 parser.add_argument("-m", "--mode", help="File change mode")
 # Optional arguments
 parser.add_argument("-o", "--outdir", default="./", help="Output folder")
